@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Details</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #0e0f11;
+  color: white;
+  padding: 20px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  background: #1b1c1f;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 0 20px rgba(0,255,204,0.2);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header img {
+  width: 60px;
+}
+
+.price {
+  font-size: 2em;
+  margin-top: 10px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #444;
+  padding: 10px 0;
+}
+
+.label {
+  color: #aaa;
+}
+
+.chart-container {
+  margin-top: 30px;
+}
+
+#chart {
+  width: 100%;
+  height: 300px;
+}
+
+.description {
+  margin-top: 20px;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+.back-btn {
+  padding: 10px 20px;
+  background: #00ffcc;
+  color: black;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 20px;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.back-btn:hover {
+  background: #ffcc00;
+}
+</style>
+</head>
+
+<body>
+
+<a href="index.html" class="back-btn">← Back to Dashboard</a>
+
+<div class="container">
+  <div id="coinDetails">Loading...</div>
+</div>
+
+<script>
+function getCoinId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("id");
+}
+
+async function loadCoin() {
+  const id = getCoinId();
+  const box = document.getElementById("coinDetails");
+
+  try {
+    // FULL coin data
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
+    const coin = await res.json();
+
+    box.innerHTML = `
+      <div class="header">
+        <img src="${coin.image.large}">
+        <h1>${coin.name} (${coin.symbol.toUpperCase()})</h1>
+      </div>
+
+      <div class="price">💲 ${coin.market_data.current_price.usd.toLocaleString()}</div>
+
+      <div class="row"><span class="label">Market Cap</span> <span>$${coin.market_data.market_cap.usd.toLocaleString()}</span></div>
+      <div class="row"><span class="label">24h High</span> <span>$${coin.market_data.high_24h.usd}</span></div>
+      <div class="row"><span class="label">24h Low</span> <span>$${coin.market_data.low_24h.usd}</span></div>
+      <div class="row"><span class="label">Circulating Supply</span> <span>${coin.market_data.circulating_supply.toLocaleString()}</span></div>
+      <div class="row"><span class="label">Total Supply</span> <span>${coin.market_data.total_supply ? coin.market_data.total_supply.toLocaleString() : "N/A"}</span></div>
+
+      <div class="chart-container">
+        <h2>Price Chart (7 Days)</h2>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <h2>Description</h2>
+      <div class="description">
+        ${coin.description.en ? coin.description.en.substring(0, 800) + "..." : "No description available."}
+      </div>
+
+      <h2>Links</h2>
+      <a href="${coin.links.homepage[0]}" target="_blank" style="color:#00ffcc;">Official Website</a>
+    `;
+
+    // Fetch 7-day chart data
+    const chartRes = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=7`);
+    const chartData = await chartRes.json();
+    const prices = chartData.prices.map(p => p[1]);
+
+    const ctx = document.getElementById("chart");
+
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: prices.map((_, i) => i + 1),
+        datasets: [{
+          data: prices,
+          borderColor: "#00ffcc",
+          backgroundColor: "rgba(0,255,204,0.2)",
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+
+  } catch (err) {
+    box.innerHTML = "Error loading coin details.";
+  }
+}
+
+loadCoin();
+</script>
+
+</body>
+</html>
